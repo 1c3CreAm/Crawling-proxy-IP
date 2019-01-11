@@ -1,0 +1,46 @@
+import requests
+import threading
+import re
+
+check_url = 'https://www.ip.cn/'
+source_url = 'http://www.xicidaili.com/nt/'  # http://www.xicidaili.com/nn/ http://www.xicidaili.com/wn/
+
+
+def check_proxies(proxies):
+    try:
+        r = requests.get(check_url, proxies=proxies,timeout = 5)
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        rex = '您现在的 IP：<code>(.*?)</code></p><p>所在地理位置：<code>(.*?)<'
+        a = re.findall(rex,r.text)
+        if re.search('武汉',a[0][1]):
+            print('false')
+        else:
+            print('您现在的 IP：' + a[0][0] + '\n' + '所在地理位置：' + a[0][1])
+            with open("daili.txt",'a') as f:
+                data = f.write(str(proxies)+'\n')
+    except:
+        print('error：timeout')
+
+def get_proxies_ip(source_url,n):
+    head = {'Host': 'www.xicidaili.com','Connection': 'keep-alive','Pragma': 'no-cache','Cache-Control': 'no-cache','Upgrade-Insecure-Requests': '1','User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36','Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8','Referer': 'http://www.xicidaili.com/wn/','Accept-Encoding': 'gzip, deflate','Accept-Language': 'zh-CN,zh;q=0.9'}
+    for i in range(int(n)):
+        i = str(i+1)
+        r = requests.get(source_url+i,headers=head)
+        rex_proxis = 'class="country"><img src[\S\s]*?td>(.*?)</[\S\s]*?td>(.*?)</[\S\s]*?td>(HTTP|HTTPS)<[\S\s]*?title="(.*?)秒[\S\s]*?class="bar"'
+        a = re.findall(rex_proxis,r.text)
+        try:
+            for i in a:
+                if float(i[3]) < 0.3:
+                    proxies_dic = {}
+                    if i[2] == 'HTTPS':
+                        proxies_dic['https'] = 'http://'+i[0]+':'+i[1]
+                    elif i[2] == 'HTTP':
+                        proxies_dic['http'] = 'http://' + i[0] + ':' + i[1]
+                    print(proxies_dic)
+                    check_proxies(proxies_dic)
+        except:
+            print('error')
+
+n = input('要访问多少页：')
+get_proxies_ip(source_url,n)
